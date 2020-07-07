@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Cirrocumulus Cloud - DN42 Search Engine</title>
+    <link rel="stylesheet" href="https://cdn.bootcss.com/element-ui/2.9.2/theme-chalk/index.css">
+</head>
+<body>
+<div id="app" v-loading="loading" style="margin-left: 10%; margin-right: 10%;">
+
+    <h1>Cirrocumulus Cloud - DN42 Search Engine</h1>
+
+    <div>
+        <el-input placeholder="Input keywords and click search botton" v-model="search_text" @keyup.native.enter="search">
+            <el-button slot="append" icon="el-icon-search" @click="search"></el-button>
+        </el-input>
+    </div>
+
+    <div v-if="error" class="text item" style="margin-top: 20px; font-size: 18px; color: red;">{{error_desc}}</div>
+
+    <div v-if="!error" class="text item" style="margin-top: 20px; font-size: 14px; color: Gray;">
+        Match {{match_records}} results ({{time_used}} ms)
+    </div>
+
+    <el-row v-for="item in result" style="margin-top: 20px;">
+        <el-link type="primary" :href=item.url target="_blank" style="font-size: 18px;">{{item.title}}</el-link>
+        <div class="text item" style="font-size: 14px;" v-html="item.abstract"></div>
+        <el-row type="flex" class="row-bg">
+            <el-col :span="12">
+                <div class="grid-content" style="color: DarkGreen; font-size: 12px;">{{item.domain}}</div>
+            </el-col>
+            <el-col :span="12">
+                <div class="grid-content" style="text-align: right;">
+                    <span style="color: DarkOliveGreen; font-size: 12px; vertical-align:top;">Weight: {{item.weight}}</span>
+                    <el-link type="info" :href=("/snapshot?url="+item.url) target="_blank" style="font-size: 12px; vertical-align:top;">
+                        Snapshot({{item.time}})
+                    </el-link>
+                </div>
+            </el-col>
+        </el-row>
+    </el-row>
+
+    <el-divider></el-divider>
+
+    <footer style="color: Gray; font-size: 12px; text-align: center; margin-bottom: 20px;" v-model="page_recorded">
+        Cirrocumulus Cloud DN42 Search Engine</br>
+        Page recorded: {{page_recorded}}</br>
+        Version: 20200707
+    </footer>
+
+</div>
+</body>
+
+<script src="https://cdn.bootcss.com/vue/2.6.10/vue.min.js"></script><!-- import Vue before Element -->
+<script src="https://cdn.bootcss.com/element-ui/2.9.2/index.js"></script>
+<script src="https://cdn.bootcss.com/axios/0.19.0-beta.1/axios.min.js"></script>
+<script>
+    new Vue({
+      el: '#app',
+      data: {
+          loading: false,
+          search_text:"",
+          result:[],
+          error:false,
+          error_desc:"",
+          page_recorded:0,
+          match_records:0,
+          time_used:0
+      },
+      mounted:function (){
+        this.getPageRecorded();
+      },
+      methods: {
+        getPageRecorded: function () {
+          this.loading=true;
+          var that=this;
+          axios.get('/api/pageRecorded')
+              .then(function (response) {
+                console.log(response);
+                that.page_recorded=response["data"]["page_recorded"];
+              })
+              .catch(function (error) {
+                console.log(error);
+              })
+              .finally(function(){
+                that.loading=false;
+              })
+        },
+        search(){
+            this.loading=true;
+            var that=this;
+            params={
+                "text": this.search_text,
+            };
+            axios.post('/api/search',params)
+              .then(function (response) {
+                console.log(response);
+                if(response["data"]["error"]){
+                    that.error=true;
+                    that.error_desc=response["data"]["error"];
+                    that.result=[];
+                }else{
+                    that.error=false;
+                    that.error_desc="";
+                    that.result=response["data"]["result"];
+                    that.match_records=response["data"]["match_records"];
+                    that.time_used=response["data"]["time_used"];
+                }
+              })
+              .catch(function (error) {
+                console.log(error);
+              })
+              .finally(function(){
+                that.loading=false;
+              })
+        },
+      }
+    })
+</script>
+</html>
